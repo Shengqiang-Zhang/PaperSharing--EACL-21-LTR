@@ -83,7 +83,7 @@
                     \item improve the ranking effectiveness
                     \item in conversational search, decide between asking clarifying questions and providing a potential answer
                     \item perform dynamic query reformulation for queries where the intent is uncertain
-                    \item predict answers with no correct answers
+                    \item predict questions with no correct answers
                 \end{itemize}
         \end{itemize}
 \end{enumerate}
@@ -195,7 +195,7 @@ The variance $var[R^D_r]$ gives us a measure of the uncertainty in the predictio
     \begin{equation}
         \textbf{RA-BERT}(\mathcal{U}_i, r) = E[R_r] - b * var[R_r] - 2b\sum_i^{n-1}cov[R_r, R_{r_i}]
     \end{equation}
-    where b is a hyperparameter that controls the aversion or predilectioin towards risk.
+    where b is a hyperparameter that controls the aversion or predilection towards risk.
     
     \begin{itemize}
         \item $\textbf{RA-BERT}^\textbf{D} $ when using $\textbf{S-BERT}^\textbf{D}$'s predictive distribution
@@ -206,7 +206,7 @@ The variance $var[R^D_r]$ gives us a measure of the uncertainty in the predictio
 \begin{frame}{Robustness to Distributional Shift}
 In order to evaluate whether we can trust the model’s calibration and uncertainty estimates, we evaluate how robust the models are to different types of shift in the test data.
 
-For all three research questions, we test the models under the following two settings:
+For all three research questions, we test the models under the following two settings to measure whether the model \textsl{"know what it knows"}:
 \begin{enumerate}
     \item Cross Domain
     \item Cross Negative Sampling: test models on negative documents that were sampled using a different NS strategy than during training.
