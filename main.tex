@@ -33,12 +33,152 @@
     \begin{block}{Probability Ranking Principle(PRP)}
     ranking documents in decreasing order of their probability of relevance leads to an optimal document ranking for ad-hoc retrieval.
     \end{block}
+    
+    For the PNP to hold, ranking models must at least meet the following conditions:
+    \begin{itemize}
+        \item [C1] assign well calibrated probabilities of relevance, i.e. if we gather all documents for which the model predicts relevance with a probability of e.g. 30\%, the amount of relevant documents should be 30\%
+        \item [C2] report certain predictions, i.e. only point estimates such as e.g. 80\% probability of relevance
+    \end{itemize}
+    
 \end{frame}
+
+\begin{frame}{Motivation}
+\begin{itemize}
+    \item [C1] It has been shown that DNNs are not well calibrated in the context of computer vision\cite{Guo2017OnCO}.
+    \item [C2] there are a number of sources of uncertainty in the training process of neural networks (Gal, 2016) that make it unreasonable to assume that neural ranking models fulfill [C2]: 
+    \begin{itemize}
+        \item \textsl{parameter uncertainty}
+        \item \textsl{structural uncertainty}
+        \item \textsl{aleatoric uncertainty}
+    \end{itemize}
+    Given these sources of uncertainty, using point estimate predictions and ranking according to the PRP might not achieve the optimal ranking for retrieval.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{What's Next?}
+\begin{enumerate}
+    \item Analyze the calibration of neural rankers, specially BERT-based rankers.
+    \item To model the uncertainty of BERT-based rankers, we propose \textsl{stochastic neural ranking models} by applying different techniques to model uncertainty of DNNs:
+        \begin{itemize}
+            \item MC Dropout
+            \item Deep Ensembles
+        \end{itemize}
+\end{enumerate}
+\end{frame}
+
+
 \section{Background and Related Work}
+\begin{frame}{Calibration and Uncertainty in IR}
+\begin{enumerate}
+    \item Calibration: 
+        \begin{itemize}
+            \item The calibration of ranking models has received little attention in IR.
+            \item Important in automated medical domain due to model interpretability
+        \end{itemize}
+    \item Uncertainty: 
+        \begin{itemize}
+            \item Treating \textbf{variance} as a measure of uncertainty inspired by economics theory.
+            \item Applications:
+                \begin{itemize}
+                    \item improve the ranking effectiveness
+                    \item in conversational search, decide between asking clarifying questions and providing a potential answer
+                    \item perform dynamic query reformulation for queries where the intent is uncertain
+                    \item predict answers with no correct answers
+                \end{itemize}
+        \end{itemize}
+\end{enumerate}
+    
+\end{frame}
 
 \section{Model}
+\begin{frame}{Research Questions}
+We introduce the models for answering the following research questions:
+\begin{itemize}
+    \item [RQ1] How calibrated are deterministic and stochastic BERT-based rankers?
+    \item [RQ2] Are the uncertainty estimates from stochastic BERT-based rankers useful for risk-aware ranking?
+    \item [RQ3] Are the uncertainty estimates obtained from stochastic BERT-based rankers useful for identifying unanswerable queries?
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Measuring Calibration(RQ1)}
+\begin{block}{Empicical Calibration Error(ECE)}
+ECE is an intuitive way of measuring to what extent the confidence scores
+from neural networks align with the true correctness likelihood. It measures the difference between the observed reliability curve (DeGroot and Fienberg, 1983) and the ideal one.
+\end{block}
+We sort the predictions of the model, divide them into $c$ buckets $\{B_0, ..., B_c\}$, and take the weighted average
+between the average predicted probability
+of relevance $avg(B_i)$ and the fraction of relevant
+documents $\frac{rel(B_i)}{|B_i|}$ in the bucket:
+\begin{equation}
+    ECE = \sum_{i=0}^c \frac{|B_i|}{n} \left|avg(B_i) - \frac{rel(B_i)}{|B_i|} \right|
+\end{equation}
+where n is the total number of test examples.
+\end{frame}
+
+\begin{frame}{Modeling Uncertainty}
+\begin{enumerate}
+    \item Define the ranking problem we focus on
+    \item Deterministic BERT-based ranker baseline model(\textbf{BERT})
+    \item Our model to answer RQ2 and RQ3:
+        \begin{itemize}
+            \item a stochatic BERT-based ranker to model uncertainty(\textbf{S-BERT})
+            \item a risk-aware BERT-based ranker to take into account uncertainty provided by S-BERT when ranking(\textbf{RA-BERT})
+        \end{itemize}
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Conversation Response Ranking}
+Let $\mathcal{D} = \{(\mathcal{U}_i, \mathcal{R}_i, \mathcal{Y}_i) \}_{i=1}^N $ be a dataset consisting of N triplets: dialogue context, response candidates and response relevance labels.
+\begin{itemize}
+    \item $\mathcal{U}_i = \{u^1, u^2, ..., u^{\tau}\}$
+    \item $\mathcal{R}_i = \{r^1, r^2, ..., r^K \}$
+    \item $\mathcal{Y}_i = \{y^1, y^2, ..., y^k \}$
+\end{itemize}
+The task is to learn a ranking function $f(.)$ that is able to generate a
+ranked list for the set of candidate responses $\mathcal{R}_i$
+based on their predicted relevance scores $f(\mathcal{U}_i, r)$
+\end{frame}
+
+\begin{frame}{Deterministic BERT Ranker}
+Pointwise BERT
+    
+\end{frame}
+
+\begin{frame}{Stochastic S-BERT Ranker}
+We want to obtain a predictive distribution which allows us to extract uncertainty estimates
+\begin{equation}
+    R_r = \{ f(\mathcal{U}_i, r)^0, f(\mathcal{U}_i, r)^1, ..., f(\mathcal{U}_i, r)^n \}
+\end{equation}
+    
+Two techniques:
+\begin{enumerate}
+    \item Deep Ensembles($\textbf{S-BERT}^\textbf{E}$)
+    
+    \item MC Dropout($\textbf{S-BERT}^\textbf{D}$)
+\end{enumerate}
+
+\end{frame}
+
+\begin{frame}{Deep Ensembles(\textbf{S-BERT}^{\textbf{E}})}
+We train $M$ models using different random seeds and make predictions with each one of them to generate M predicted values:
+\begin{equation}
+    R^{E}_{r} = \{ f(\mathcal{U}_i, r)^0, f(\mathcal{U}_i, r)^1, ..., f(\mathcal{U}_i, r)^M \}
+\end{equation}
+The mean of the predicted values is used as the predicted probability of relevance:
+\begin{equation}
+    \textbf{S-BERT}^{\textbf{E}}(\mathcal{U}_i, r) = E[R^E_r]
+\end{equation}
+    
+\end{frame}
+
+\begin{frame}{MC Dropout(\textbf{S-BERT}^{\textbf{D}})}
+    
+\end{frame}
 
 \section{Experiments}
 
 \section{Conclusion}
+
+\bibliography{references}
+\bibliographystyle{acl_natbib}
 \end{document}
