@@ -8,7 +8,7 @@
 %Information to be included in the title page:
 \title[PaperSharing-(EACL'21)LTR]{[EACL'21] On the Calibration and Uncertainty of Neural Learning to Rank Models}
 \author[Shengqiang Zhang]{Gustavo Penha \and Claudia Hauff}
-\institute[Baidu]{Delft University of Technology, Delft}
+\institute[Baidu]{Delft University of Technology, Delft, Netherlands}
 \date{2021.1.25}
 
 \AtBeginSection[]
@@ -30,22 +30,22 @@
 
 \section{Motivation}
 \begin{frame}{Motivation}
-    \begin{block}{Probability Ranking Principle(PRP)}
+    \begin{block}{Probability Ranking Principle(PRP) (Robertson, 1977)}
     ranking documents in decreasing order of their probability of relevance leads to an optimal document ranking for ad-hoc retrieval.
     \end{block}
     
-    For the PNP to hold, ranking models must at least meet the following conditions:
+    For the PNP to hold, ranking models must at least meet the following conditions (Gordan and Lenk, 1991):
     \begin{itemize}
-        \item [C1] assign well calibrated probabilities of relevance, i.e. if we gather all documents for which the model predicts relevance with a probability of e.g. 30\%, the amount of relevant documents should be 30\%
-        \item [C2] report certain predictions, i.e. only point estimates such as e.g. 80\% probability of relevance
+        \item [C1] assign \textbf{well calibrated} probabilities of relevance, i.e. if we gather all documents for which the model predicts relevance with a probability of e.g. 30\%, the amount of relevant documents should be 30\%
+        \item [C2] the probabilities of relevance are reported \textbf{with certainty}
     \end{itemize}
     
 \end{frame}
 
 \begin{frame}{Motivation}
 \begin{itemize}
-    \item [C1] It has been shown that DNNs are not well calibrated in the context of computer vision\cite{Guo2017OnCO}.
-    \item [C2] there are a number of sources of uncertainty in the training process of neural networks (Gal, 2016) that make it unreasonable to assume that neural ranking models fulfill [C2]: 
+    \item [C1] It has been shown that DNNs are not well calibrated in the context of computer vision (Guo et al., 2017).
+    \item [C2] There are a number of sources of uncertainty in the training process of neural networks that make it unreasonable to assume that neural ranking models fulfill [C2]: 
     \begin{itemize}
         \item \textsl{parameter uncertainty}
         \item \textsl{structural uncertainty}
@@ -149,13 +149,19 @@ We want to obtain a predictive distribution which allows us to extract uncertain
 \begin{equation}
     R_r = \{ f(\mathcal{U}_i, r)^0, f(\mathcal{U}_i, r)^1, ..., f(\mathcal{U}_i, r)^n \}
 \end{equation}
-    
+
+\begin{columns}
+
+\column{0.5\textwidth}
 Two techniques:
 \begin{enumerate}
     \item Deep Ensembles($\textbf{S-BERT}^\textbf{E}$)
-    
     \item MC Dropout($\textbf{S-BERT}^\textbf{D}$)
 \end{enumerate}
+
+\column{0.5\textwidth}
+\includegraphics[scale=0.3]{figure1.png}
+\end{columns}
 
 \end{frame}
 
@@ -168,17 +174,139 @@ The mean of the predicted values is used as the predicted probability of relevan
 \begin{equation}
     \textbf{S-BERT}^{\textbf{E}}(\mathcal{U}_i, r) = E[R^E_r]
 \end{equation}
-    
+The variance $var[R^E_r]$ gives us a measure of the uncertainty in the prediction.
 \end{frame}
 
 \begin{frame}{MC Dropout(\textbf{S-BERT}^{\textbf{D}})}
+We train a single model and employ dropout at test time and generate stochastic predictions of relevance by conducting T forward passes:
+\begin{equation}
+    R^{D}_{r} = \{ f(\mathcal{U}_i, r)^0, f(\mathcal{U}_i, r)^1, ..., f(\mathcal{U}_i, r)^T \}
+\end{equation}
+The mean of the predicted values is used as the predicted probability of relevance:
+\begin{equation}
+    \textbf{S-BERT}^{\textbf{D}}(\mathcal{U}_i, r) = E[R^D_r]
+\end{equation}
+The variance $var[R^D_r]$ gives us a measure of the uncertainty in the prediction.
+
+\end{frame}
+
+\begin{frame}{Risk-Aware RA-BERT Ranker}
+    Given the predictive distribution $R_r$, obtained either by \textbf{Ensemble} or \textbf{Dropout}, we use the following function to rank responses with riskawareness:
+    \begin{equation}
+        \textbf{RA-BERT}(\mathcal{U}_i, r) = E[R_r] - b * var[R_r] - 2b\sum_i^{n-1}cov[R_r, R_{r_i}]
+    \end{equation}
+    where b is a hyperparameter that controls the aversion or predilectioin towards risk.
+    
+    \begin{itemize}
+        \item $\textbf{RA-BERT}^\textbf{D} $ when using $\textbf{S-BERT}^\textbf{D}$'s predictive distribution
+        \item $\textbf{RA-BERT}^\textbf{E} $ when using $\textbf{S-BERT}^\textbf{D}$'s predictive distribution
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Robustness to Distributional Shift}
+In order to evaluate whether we can trust the model’s calibration and uncertainty estimates, we evaluate how robust the models are to different types of shift in the test data.
+
+For all three research questions, we test the models under the following two settings:
+\begin{enumerate}
+    \item Cross Domain
+    \item Cross Negative Sampling: test models on negative documents that were sampled using a different NS strategy than during training.
+        \begin{itemize}
+            \item $\textbf{NS}_{random}$
+            \item $\textbf{NS}_{classic}$
+            \item $\textbf{NS}_{sentenceEmb}$
+        \end{itemize}
+        
+\end{enumerate}
     
 \end{frame}
 
 \section{Experiments}
+\begin{frame}{Experimental Setup}
+\begin{enumerate}
+    \item Dataset
+        \begin{itemize}
+            \item MSDialog (246k context-response pairs, from the MS QA forum for several Microsoft products)
+            \item MANTis (1.3 million context-response pairs, from 14 Stack Exchange sites, such as \textsl{askubuntu} and \textsl{travel}
+            \item $UDC_{DSTC8}$ (184k context-response pairs of disentangled Ubuntu IRC dialogues)
+        \end{itemize}
+    \item Implementation Details
+        \begin{itemize}
+            \item Training BERT using sample method of BM25
+            \item $\textbf{NS}_{sentenceEmb}$ use \textbf{sentenceBERT} (Reimers and Gurevych, 2019)
+            \item The baseline BERT-based ranker setup yields comparable effectiveness with SOTA methods
+        \end{itemize}
+    \item Evaluation
+        \begin{itemize}
+            \item effectiveness: recall at positiion K with n candidates: $R_n@K$
+            \item evaluate quality of the uncertainty estimation with two downstream tasks:
+                \begin{itemize}
+                    \item improve conversation response ranking itself via Risk-Aware ranking
+                    \item predict unanswerable conversational contexts
+                \end{itemize}
+        \end{itemize}
+\end{enumerate}
+    
+\end{frame}
 
+\begin{frame}{Results: Calibration of Neural Rankers(RQ1)}
+\includegraphics[scale=0.35]{table1.png}
+\begin{itemize}
+    \item \textbf{BERT} is both effective and calibrated under no distributional shift conditions. However, the calibration error increases significantly in cross-domain and cross-NS settings, \textbf{indicating that they do not have robust calibrated predictions}.
+\end{itemize}
+    
+\end{frame}
+
+\begin{frame}{Results: Calibration of Neural Rankers(RQ1)}
+\includegraphics[scale=0.33]{table2.png}
+\begin{itemize}
+    \item \textbf{stochastic BERT} displays the improvements (relative drop in ECE) over \textbf{BERT} in terms of calibration.
+    \item $\textbf{S-BERT}^{E}$ is on average \textbf{14\%} better than \textbf{BERT}, while $\textbf{S-BERT}^{D}$ is on average \textbf{10\%} better than \textbf{BERT}.
+    \item \textbf{answering our RQ1: stochastic BERT-based rankers have better calibration than deterministic BERT-based ranker}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Results: Uncertainty Estimates for Risk-Aware Neural Ranking(RQ2)}
+    \includegraphics[scale=0.4]{figure3.png}
+    
+\end{frame}
+\begin{frame}{Results: Uncertainty Estimates for Risk-Aware Neural Ranking(RQ2)}
+    
+    \begin{itemize}
+        \item When $b = 0$, we are using the mean of the predictive distribution and disregard the risk, which is relevant to \textbf{S-BERT}
+        \item When $b < 0$, we are ranking with risk predilection. In all conditions the effectiveness was significantly worse than when $b = 0$
+        \item When increasing the risk aversion ($b > 0$), it has different effects depending on the combination of domain and NS.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Results: Uncertainty Estimates for Risk-Aware Neural Ranking(RQ2)}
+In order to investigate whether ranking with risk aversion is more effective than using the predictive distribution mean, we select $b$ based on the best value observed on the validation set.
+
+\includegraphics[scale=0.33]{table3.png}
+\textbf{This answers our RQ2, indicating that the uncertainties obtained from stochastic neural rankers are useful for risk-aware ranking, specially in the cross-NS setting where the baseline model is quite ineffective.}
+\end{frame}
+
+\begin{frame}{Results: Uncertainty Estimates for NOTA prediction(RQ3)}
+    \includegraphics[scale=0.35]{table4.png}
+    \includegraphics[scale=0.4]{table5.png}
+\end{frame}
+
+\begin{frame}{Results: Uncertainty Estimates for NOTA prediction(RQ3)}
+The uncertainties from $\textbf{S-BERT}^D$ and $\textbf{S-BERT}^E$ significantly improve the F1 for NOTA prediction for both cross-domain and cross-NS settings
+\begin{itemize}
+    \item cross-domain: improvement of 24\% on average
+    \item cross-NS: improvement of 46\% on average
+\end{itemize}
+
+\textbf{This answers our RQ3 that the uncertainty estimates from stochastic neural rankers do improve the effectiveness of the NOTA prediction task (by an average of 33\% for all conditions considered)}
+\end{frame}
 \section{Conclusion}
-
+\begin{frame}{Conclusion}
+\begin{enumerate}
+    \item Show that deterministic BERT-based ranker is not robustly calibrated for the task of conversation response ranking
+    \item Improve BERT-based ranker with two techniques to estimate uncertainty through \textsl{stochastic neural ranking}
+    \item Benefits of estimating uncertainty using risk-aware neural ranking and for predicting unanswerable conversational contexts
+\end{enumerate}
+\end{frame}
 \bibliography{references}
 \bibliographystyle{acl_natbib}
 \end{document}
